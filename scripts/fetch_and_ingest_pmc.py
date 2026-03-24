@@ -13,10 +13,12 @@ Usage (from repo root):
         --target "KRAS G12C" \
         --source "Lanman 2022 Accounts of Chemical Research"
 
-    # Process multiple papers in one run:
+    # Process multiple papers; use Sonnet for ingest (lower TPM, avoids rate limits):
     PYTHONUTF8=1 python scripts/fetch_and_ingest_pmc.py \
         --pmc PMC9583618 PMC10201555 PMC10577700 \
-        --target "KRAS G12C"
+        --target "KRAS G12C" \
+        --model-extract claude-opus-4-6 \
+        --model-ingest claude-sonnet-4-6
 """
 from __future__ import annotations
 
@@ -150,7 +152,7 @@ PYTHON = sys.executable
 
 # ── Phase 03 extraction ──────────────────────────────────────────────────────
 
-def run_phase03(pdf_path: Path, output_dir: Path, target: str, model: str) -> tuple[Path, Path]:
+def run_phase03(pdf_path: Path, output_dir: Path, target: str, model_extract: str) -> tuple[Path, Path]:
     """
     Run Phase 03 extraction via subprocess. Returns (compounds_path, sar_path).
     Using subprocess avoids sys.path conflicts between Phase 03 and Phase 04
@@ -165,7 +167,7 @@ def run_phase03(pdf_path: Path, output_dir: Path, target: str, model: str) -> tu
         "--paper", str(pdf_path),
         "--target", target,
         "--output", str(output_dir),
-        "--model", model,
+        "--model", model_extract,
     ]
     result = subprocess.run(
         cmd,
@@ -226,7 +228,8 @@ def process_paper(
     pmc_id: str,
     target: str,
     source: str,
-    model: str,
+    model_extract: str,
+    model_ingest: str,
     verbose: bool,
     work_dir: Path,
     dry_run: bool = False,
@@ -291,7 +294,7 @@ def process_paper(
             pdf_path=pdf_path,
             output_dir=output_dir,
             target=target,
-            model=model,
+            model_extract=model_extract,
         )
         print(f"        Wrote {compounds_path.name}, {sar_path.name}")
     except Exception as exc:
@@ -318,7 +321,7 @@ def process_paper(
             sar_path=sar_path,
             target=target,
             source=source,
-            model=model,
+            model=model_ingest,
             verbose=verbose,
         )
         print(f"        Ingest complete.")
@@ -342,8 +345,10 @@ def main() -> None:
                         help="Drug target name — used as memory namespace")
     parser.add_argument("--source", default=None,
                         help="Source label override. Defaults to PMC ID.")
-    parser.add_argument("--model", default="claude-opus-4-6",
-                        help="Claude model for extraction and ingest")
+    parser.add_argument("--model-extract", default="claude-opus-4-6",
+                        help="Claude model for Phase 03 extraction (PDF → JSON)")
+    parser.add_argument("--model-ingest", default="claude-sonnet-4-6",
+                        help="Claude model for Phase 04 ingest (JSON → memory)")
     parser.add_argument("--work-dir", default="scripts/pmc_work",
                         help="Directory to store downloaded XML, PDF, extraction outputs")
     parser.add_argument("--verbose", action="store_true",
@@ -378,7 +383,8 @@ def main() -> None:
             pmc_id=pmc_id,
             target=args.target,
             source=source,
-            model=args.model,
+            model_extract=args.model_extract,
+            model_ingest=args.model_ingest,
             verbose=args.verbose,
             work_dir=work_dir,
             dry_run=args.dry_run,
