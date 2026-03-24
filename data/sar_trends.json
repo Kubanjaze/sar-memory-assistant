@@ -1,0 +1,25 @@
+[
+  {
+    "finding": "Para-fluorine substitution on the pendant phenyl ring improved biochemical potency approximately 3-fold relative to the unsubstituted analog.",
+    "structural_feature": "para-fluoro substituent on pendant phenyl",
+    "direction": "improve",
+    "magnitude": "~3-fold",
+    "evidence_quote": "Introduction of a para-fluorine atom at the phenyl terminus resulted in a ~3-fold potency improvement (IC50 45 nM -> 12 nM).",
+    "page_reference": "4"
+  },
+  {
+    "finding": "Ortho-methoxy substitution on the pyridine ring reduced cellular activity relative to the unsubstituted parent compound.",
+    "structural_feature": "ortho-methoxy substituent on pyridine ring",
+    "direction": "decrease",
+    "magnitude": "7-fold reduction in cellular IC50",
+    "evidence_quote": "The ortho-methoxy analog showed 7-fold reduced cellular potency versus the unsubstituted parent.",
+    "page_reference": "6"
+  },
+  {
+    "finding": "Pyridine core replacement of benzene improved selectivity for KRAS G12C over wild-type KRAS.",
+    "structural_feature": "pyridine vs. benzene core scaffold",
+    "direction": "improve",
+    "evidence_quote": "Replacement of the benzene core with pyridine improved selectivity for the G12C mutant over wild-type KRAS.",
+    "page_reference": "8"
+  }
+]

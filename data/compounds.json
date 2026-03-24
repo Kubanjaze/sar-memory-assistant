@@ -1,0 +1,36 @@
+[
+  {
+    "compound_name": "compound_A",
+    "smiles": "CC1=CC=C(NC(=O)c2ccc(F)cc2)C=N1",
+    "activity_value": "45",
+    "activity_unit": "nM",
+    "activity_type": "IC50",
+    "assay_type": "biochemical",
+    "assay_target": "KRAS G12C",
+    "assay_species": "human",
+    "source_quote": "Compound A demonstrated an IC50 of 45 nM in the SOS exchange biochemical assay.",
+    "page_reference": "3"
+  },
+  {
+    "compound_name": "compound_B",
+    "smiles": "COC1=CC=C(NC(=O)c2cncc(F)c2)C=N1",
+    "activity_value": "12",
+    "activity_unit": "nM",
+    "activity_type": "IC50",
+    "assay_type": "biochemical",
+    "assay_target": "KRAS G12C",
+    "assay_species": "human",
+    "source_quote": "Compound B showed an IC50 of 12 nM, a 3.8-fold improvement over compound A.",
+    "page_reference": "5"
+  },
+  {
+    "compound_name": "compound_C",
+    "activity_value": "320",
+    "activity_unit": "nM",
+    "activity_type": "IC50",
+    "assay_type": "cellular",
+    "assay_target": "KRAS G12C",
+    "source_quote": "The cellular IC50 for compound C was 320 nM in the NCI-H358 cell line.",
+    "page_reference": "7"
+  }
+]
