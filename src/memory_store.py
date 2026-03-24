@@ -190,10 +190,14 @@ def execute_memory_command(
 
         # ------------------------------------------------------------------ #
         # create — create or overwrite a file                                 #
+        # The memory_20250818 tool sends the body as "file_text".            #
+        # Accept both "file_text" (tool schema) and "content" (fallback).   #
         # ------------------------------------------------------------------ #
         elif command == "create":
             fpath = _resolve_safe_path(memory_dir, path)
-            content: str = str(kwargs.get("content", ""))
+            content: str = str(
+                kwargs.get("file_text") or kwargs.get("content") or ""
+            )
             fpath.write_text(content, encoding="utf-8")
             return f"Created {fpath.name} ({len(content)} chars)."
 
@@ -228,41 +232,64 @@ def execute_memory_command(
             return f"str_replace succeeded in {fpath.name!r}."
 
         # ------------------------------------------------------------------ #
-        # insert — add content relative to an anchor string, or at end        #
+        # insert — insert text after a given line number                      #
+        #                                                                     #
+        # The memory_20250818 tool uses:                                      #
+        #   insert_line: int  — 0-based index of the line AFTER which to     #
+        #                       insert (mirrors the text-editor tool schema). #
+        #   insert_text: str  — the text to insert.                          #
+        #                                                                     #
+        # Fallback: anchor-string mode ("after"/"before") and plain append.  #
         # ------------------------------------------------------------------ #
         elif command == "insert":
             fpath = _resolve_safe_path(memory_dir, path)
-            # Auto-create empty file if it doesn't exist
             if not fpath.exists():
                 fpath.write_text("", encoding="utf-8")
 
-            insert_content: str = str(kwargs.get("content", ""))
-            after: str | None = kwargs.get("after", None)   # type: ignore[assignment]
-            before: str | None = kwargs.get("before", None)  # type: ignore[assignment]
-
             current = fpath.read_text(encoding="utf-8")
 
-            if after is not None:
-                after_str = str(after)
-                if after_str not in current:
-                    return (
-                        f"Error: 'after' anchor {after_str!r} not found in {fpath.name!r}. "
-                        "Use 'view' to check the current content."
-                    )
-                updated = current.replace(after_str, after_str + "\n" + insert_content, 1)
+            # Primary: insert_line + insert_text (memory tool schema)
+            insert_line = kwargs.get("insert_line", None)
+            insert_text = kwargs.get("insert_text", None)
 
-            elif before is not None:
-                before_str = str(before)
-                if before_str not in current:
-                    return (
-                        f"Error: 'before' anchor {before_str!r} not found in {fpath.name!r}. "
-                        "Use 'view' to check the current content."
-                    )
-                updated = current.replace(before_str, insert_content + "\n" + before_str, 1)
+            if insert_line is not None and insert_text is not None:
+                lines = current.split("\n")
+                idx = int(insert_line)
+                # Clamp to valid range
+                idx = max(0, min(idx, len(lines)))
+                # insert_text may already include leading/trailing newlines
+                new_lines = lines[:idx] + [str(insert_text)] + lines[idx:]
+                updated = "\n".join(new_lines)
 
             else:
-                # Default: append at end-of-file
-                updated = current.rstrip("\n") + "\n\n" + insert_content + "\n"
+                # Fallback: anchor-string or append
+                insert_content: str = str(
+                    kwargs.get("content") or kwargs.get("insert_text") or ""
+                )
+                after: str | None = kwargs.get("after", None)   # type: ignore[assignment]
+                before: str | None = kwargs.get("before", None)  # type: ignore[assignment]
+
+                if after is not None:
+                    after_str = str(after)
+                    if after_str not in current:
+                        return (
+                            f"Error: 'after' anchor {after_str!r} not found in {fpath.name!r}. "
+                            "Use 'view' to check the current content."
+                        )
+                    updated = current.replace(after_str, after_str + "\n" + insert_content, 1)
+
+                elif before is not None:
+                    before_str = str(before)
+                    if before_str not in current:
+                        return (
+                            f"Error: 'before' anchor {before_str!r} not found in {fpath.name!r}. "
+                            "Use 'view' to check the current content."
+                        )
+                    updated = current.replace(before_str, insert_content + "\n" + before_str, 1)
+
+                else:
+                    # Default: append at end-of-file
+                    updated = current.rstrip("\n") + "\n\n" + insert_content + "\n"
 
             fpath.write_text(updated, encoding="utf-8")
             return f"insert succeeded in {fpath.name!r}."

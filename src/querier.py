@@ -182,10 +182,12 @@ def _print_cache_stats(usage: object) -> None:
     written = getattr(usage, "cache_creation_input_tokens", 0) or 0
     output = getattr(usage, "output_tokens", 0) or 0
 
-    if total == 0:
+    # input_tokens counts only the NON-cached portion; add cached to get total.
+    total_all = total + cached
+    if total_all == 0:
         return
 
-    hit_rate = cached / total if total > 0 else 0.0
+    hit_rate = cached / total_all
 
     print(
         f"\n  [cache] input={total} tokens | "
