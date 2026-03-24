@@ -31,10 +31,11 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import Anthropic, RateLimitError
 
 from src.deduplicator import get_dedup_rules
 from src.memory_store import MEMORY_FILES, execute_memory_command, load_memory_state
@@ -58,6 +59,28 @@ try:
 except ImportError:
     _TOOL_RUNNER_AVAILABLE = False
     BetaAbstractMemoryTool = object  # type: ignore[assignment,misc]
+
+# ── rate-limit retry helper ───────────────────────────────────────────────────
+
+_TPM_RETRY_WAIT: int = 62   # seconds to wait after a 429 TPM error
+_TPM_MAX_RETRIES: int = 3   # max retries per API call
+
+
+def _create_with_retry(client: Anthropic, **kwargs: Any) -> Any:
+    """Call client.beta.messages.create with retry on 429 RateLimitError."""
+    for attempt in range(_TPM_MAX_RETRIES + 1):
+        try:
+            return client.beta.messages.create(**kwargs)
+        except RateLimitError:
+            if attempt == _TPM_MAX_RETRIES:
+                raise
+            print(
+                f"        [rate-limit] 429 on attempt {attempt + 1}; "
+                f"sleeping {_TPM_RETRY_WAIT}s before retry...",
+                file=sys.stderr,
+            )
+            time.sleep(_TPM_RETRY_WAIT)
+
 
 # ── system prompt ─────────────────────────────────────────────────────────────
 
@@ -206,7 +229,8 @@ def _run_ingest_manual(
     while iteration < MAX_TOOL_ITERATIONS:
         iteration += 1
 
-        response = client.beta.messages.create(
+        response = _create_with_retry(
+            client,
             betas=["context-management-2025-06-27"],
             model=model,
             max_tokens=4096,

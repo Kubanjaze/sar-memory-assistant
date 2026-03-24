@@ -152,11 +152,21 @@ PYTHON = sys.executable
 
 # ── Phase 03 extraction ──────────────────────────────────────────────────────
 
-def run_phase03(pdf_path: Path, output_dir: Path, target: str, model_extract: str) -> tuple[Path, Path]:
+def run_phase03(
+    pdf_path: Path,
+    output_dir: Path,
+    target: str,
+    model_extract: str,
+    skip_agent: bool = True,
+) -> tuple[Path, Path]:
     """
     Run Phase 03 extraction via subprocess. Returns (compounds_path, sar_path).
     Using subprocess avoids sys.path conflicts between Phase 03 and Phase 04
     both having a src/ package.
+
+    skip_agent=True (default): omits the Phase B research agent (web search +
+    report.md), saving ~$0.50–$1.00 per paper.  The memory ingest pipeline
+    never reads report.md, so this is pure cost savings.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     compounds_path = output_dir / "compounds.json"
@@ -169,6 +179,8 @@ def run_phase03(pdf_path: Path, output_dir: Path, target: str, model_extract: st
         "--output", str(output_dir),
         "--model", model_extract,
     ]
+    if skip_agent:
+        cmd.append("--skip-agent")
     result = subprocess.run(
         cmd,
         cwd=str(PHASE03_ROOT),
@@ -233,6 +245,7 @@ def process_paper(
     verbose: bool,
     work_dir: Path,
     dry_run: bool = False,
+    skip_agent: bool = True,
 ) -> bool:
     """
     Full pipeline for one PMC paper.
@@ -295,6 +308,7 @@ def process_paper(
             output_dir=output_dir,
             target=target,
             model_extract=model_extract,
+            skip_agent=skip_agent,
         )
         print(f"        Wrote {compounds_path.name}, {sar_path.name}")
     except Exception as exc:
@@ -345,10 +359,14 @@ def main() -> None:
                         help="Drug target name — used as memory namespace")
     parser.add_argument("--source", default=None,
                         help="Source label override. Defaults to PMC ID.")
-    parser.add_argument("--model-extract", default="claude-opus-4-6",
+    parser.add_argument("--model-extract", default="claude-sonnet-4-6",
                         help="Claude model for Phase 03 extraction (PDF → JSON)")
     parser.add_argument("--model-ingest", default="claude-sonnet-4-6",
                         help="Claude model for Phase 04 ingest (JSON → memory)")
+    parser.add_argument("--research-agent", action="store_true",
+                        help="Run Phase B research agent (web search + report.md). "
+                             "OFF by default — adds ~$0.50–$1.00 per paper with no "
+                             "benefit to the memory store.")
     parser.add_argument("--work-dir", default="scripts/pmc_work",
                         help="Directory to store downloaded XML, PDF, extraction outputs")
     parser.add_argument("--verbose", action="store_true",
@@ -388,6 +406,7 @@ def main() -> None:
             verbose=args.verbose,
             work_dir=work_dir,
             dry_run=args.dry_run,
+            skip_agent=not args.research_agent,
         )
         results[pmc_id] = "OK" if ok else "FAILED"
 
